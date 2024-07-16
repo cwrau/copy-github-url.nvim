@@ -64,24 +64,31 @@ local function getGitBranch()
 end
 
 ---@return nil
-M.openCurrentFileSelection = function()
+function M.copyCurrentFileSelectionLink()
   local githubUrl = getGithubUrl()
   if githubUrl then
     local currentFileName = vim.api.nvim_buf_get_name(0)
     local relativeFilePath = getRelativeFilePath(currentFileName)
     if relativeFilePath then
       local branch = assert(getGitBranch(), "Should be in git repo")
+      local mode = vim.fn.mode()
       local startLine = vim.fn.getpos("v")[2]
+      local startChar = vim.fn.getpos("v")[3]
       local endLine = vim.fn.getpos(".")[2]
-      local fullFileUrl = githubUrl
-        .. "/blob/"
-        .. branch
-        .. "/"
-        .. relativeFilePath
-        .. "#L"
-        .. startLine
-        .. "-L"
-        .. endLine
+      local endChar = vim.fn.getpos(".")[3]
+      local endLineLength = vim.fn.col({ endLine, "$" }) - 1
+
+      local fullFileUrl = githubUrl .. "/blob/" .. branch .. "/" .. relativeFilePath .. "?plain=1#L" .. startLine
+      if startChar ~= 1 and mode == "v" then
+        fullFileUrl = fullFileUrl .. "C" .. startChar
+      end
+      local shouldAppendEndChar = mode == "v" and endChar < endLineLength
+      if startLine ~= endLine or shouldAppendEndChar then
+        fullFileUrl = fullFileUrl .. "-L" .. endLine
+        if shouldAppendEndChar then
+          fullFileUrl = fullFileUrl .. "C" .. endChar
+        end
+      end
       vim.fn.setreg("*", fullFileUrl)
       vim.notify("Copied GitHub url to clipboard")
     else
@@ -90,12 +97,19 @@ M.openCurrentFileSelection = function()
   end
 end
 
-M.setup = function()
+function M.setup()
   require("which-key").add({
     {
       "<leader>cg",
-      M.openCurrentFileSelection,
-      desc = "Copy GitHub URL of current selection or single line",
+      M.copyCurrentFileSelectionLink,
+      desc = "Copy GitHub URL of current line",
+      mode = { "n" },
+    },
+    {
+      "<leader>cg",
+      M.copyCurrentFileSelectionLink,
+      desc = "Copy GitHub URL of current selection",
+      mode = { "v" },
     },
   })
 end
