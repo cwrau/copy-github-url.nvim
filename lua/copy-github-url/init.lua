@@ -91,14 +91,13 @@ M.openCurrentFileSelection = function()
 end
 
 M.setup = function()
-  require("which-key").register({
-    c = {
-      g = {
-        M.openCurrentFileSelection,
-        "Copy GitHub URL of current selection or single line",
-      },
+  require("which-key").add({
+    {
+      "<leader>cg",
+      M.openCurrentFileSelection,
+      desc = "Copy GitHub URL of current selection or single line",
     },
-  }, { prefix = "<leader>" })
+  })
 end
 
 return M
