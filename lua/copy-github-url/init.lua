@@ -11,10 +11,8 @@ local function getCommandResult(command)
     commandHandle:flush()
     result = tostring(commandHandle:read("a"))
     commandHandle:close()
-    if result == "" or result == nil then
+    if result == "" then
       result = nil
-    else
-      result = result:gsub("\n", "")
     end
   end
   return result
@@ -23,19 +21,31 @@ end
 ---@param file string
 ---@return string|nil
 local function getRelativeFilePath(file)
-  return getCommandResult("git ls-files --full-name " .. file)
+  local filePath = getCommandResult("git ls-files --full-name " .. file)
+  if filePath then
+    return vim.trim(filePath)
+  end
+  return nil
 end
 
 ---@return string|nil
 local function getGitRemote()
   local remoteString = getCommandResult("git remote -v")
   if remoteString then
-    for remote in remoteString:gmatch("([^\n]+)") do
+    local remotes = {}
+    for remote in remoteString:gmatch("[^\r\n]+") do
       local fields = {}
       for field in remote:gmatch("([^%s]+)") do
         table.insert(fields, field)
       end
-      return fields[2]
+      remotes[fields[1]] = fields[2]
+    end
+    if remotes["origin"] then
+      return remotes["origin"]
+    else
+      for _, remote in pairs(remotes) do
+        return remote
+      end
     end
   end
   return nil
@@ -55,12 +65,16 @@ local function getGithubUrl()
     end
     url = url:gsub(".git$", "")
   end
-  return url
+  return vim.trim(url)
 end
 
 ---@return string|nil
 local function getGitBranch()
-  return getCommandResult("git branch --show")
+  local branch = getCommandResult("git branch --show")
+  if branch then
+    return vim.trim(branch)
+  end
+  return nil
 end
 
 ---@return nil
